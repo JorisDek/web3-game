@@ -16,6 +16,15 @@ export const GlobalContextProvider = ({children}) => {
     type: 'info',
     message: ''
   })
+  const [battleName, setBattleName] = useState('')
+  const [gameData, setGameData ] = useState({
+    players: [],
+    pendingBattles: [],
+    activeBattle: null
+  })
+  const [updateGameData, setUpdateGameData] = useState(0)
+  const [battleGround, setBattleGround] = useState('bg-astral')
+
   const navigate = useNavigate()
 
   //* Set wallet address to state
@@ -53,7 +62,8 @@ export const GlobalContextProvider = ({children}) => {
     if (contract) {
       createEventListeners({
         navigate, contract, provider,
-        walletAddress, setShowAlert
+        walletAddress, setShowAlert,
+        setUpdateGameData
       })
     }
   }, [contract])
@@ -72,10 +82,36 @@ export const GlobalContextProvider = ({children}) => {
     }
   }, [showAlert])
 
+
+  //* Set game data to state
+  useEffect(() => {
+    const fetchGameData = async () => {
+      const fetchedBattles = await contract.getAllBattles()
+      const pendingBattles = fetchedBattles.filter(
+          battle => battle.battleStatus === 0)
+      let activeBattle = null
+
+      fetchedBattles.forEach((battle) => {
+        if (battle.players.find((player) => player.toLowerCase() === walletAddress.toLowerCase())) {
+          if(battle.winner.startsWith('0x00')) {
+            activeBattle = battle
+          }
+        }
+      })
+
+      setGameData({pendingBattles: pendingBattles.slice(1), activeBattle })
+    }
+
+    if (contract) fetchGameData()
+  }, [contract, updateGameData])
+
   return (
       <GlobalContext.Provider value={{
         contract, walletAddress,
-        showAlert, setShowAlert
+        showAlert, setShowAlert,
+        battleName, setBattleName,
+        gameData,
+        battleGround, setBattleGround
       }}>
         {children}
       </GlobalContext.Provider>
